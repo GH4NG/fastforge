@@ -20,7 +20,7 @@ class AppPackageMakerIpa extends AppPackageMaker {
       final iphoneosDirectory = pkgFile.parent;
       final iosDirectory = iphoneosDirectory.parent;
       final payloadDirectory = Directory('${iosDirectory.path}/Payload');
-      final ipaFile = File('${iphoneosDirectory.path}/Runner.ipa}');
+      final ipaFile = File('${iphoneosDirectory.path}/Runner.ipa');
       try {
         await $('cp', ['-RH', iphoneosDirectory.path, payloadDirectory.path]);
         await $(
