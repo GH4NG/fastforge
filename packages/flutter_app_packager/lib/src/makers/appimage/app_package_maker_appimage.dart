@@ -210,34 +210,54 @@ class AppPackageMakerAppImage extends AppPackageMaker {
         ),
       );
 
-      await Future.wait(
-        appSOLibs.map((so) async {
-          final referencedSharedLibs =
-              await _getSharedDependencies(so.path).then(
-            (d) => d.difference(libFlutterGtkDeps)
-              ..removeWhere(
-                (lib) => lib.contains('libflutter_linux_gtk.so'),
-              ),
-          );
-
-          if (referencedSharedLibs.isEmpty) return;
-
-          await $(
-            'cp',
-            [
-              ...referencedSharedLibs,
-              path.join(
-                makeConfig.packagingDirectory.path,
-                '${makeConfig.appName}.AppDir/usr/lib',
-              ),
-            ],
-          ).then((value) {
-            if (value.exitCode != 0) {
-              throw MakeError(value.stderr as String);
-            }
-          });
-        }),
+      final targetUsrLibDir = path.join(
+        makeConfig.packagingDirectory.path,
+        '${makeConfig.appName}.AppDir/usr/lib',
       );
+
+      final appDirPath = path.join(
+        makeConfig.packagingDirectory.path,
+        '${makeConfig.appName}.AppDir',
+      );
+
+      // Collect all referenced shared libraries (deduplicated)
+      // Filter out libraries that are inside the AppDir (they're already present)
+      // and deduplicate by basename to avoid cp conflicts
+      final allReferencedLibs = <String>{};
+      final seenBasenames = <String>{};
+      for (final so in appSOLibs) {
+        final deps = await _getSharedDependencies(so.path).then(
+          (d) => d.difference(libFlutterGtkDeps)
+            ..removeWhere(
+              (lib) =>
+                  lib.contains('libflutter_linux_gtk.so') ||
+                  lib.startsWith(appDirPath),
+            ),
+        );
+        for (final dep in deps) {
+          final basename = path.basename(dep);
+          if (!seenBasenames.contains(basename)) {
+            seenBasenames.add(basename);
+            allReferencedLibs.add(dep);
+          }
+        }
+      }
+
+      // Copy all deduplicated libraries at once
+      if (allReferencedLibs.isNotEmpty) {
+        await $(
+          'cp',
+          [
+            '-f',
+            ...allReferencedLibs,
+            targetUsrLibDir,
+          ],
+        ).then((value) {
+          if (value.exitCode != 0) {
+            throw MakeError(value.stderr as String);
+          }
+        });
+      }
 
       await Future.wait(
         makeConfig.include.map((so) async {
