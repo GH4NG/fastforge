@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:path/path.dart' as p;
 import 'package:flutter_app_packager/src/api/app_package_maker.dart';
 
 class AppPackageMakerApk extends AppPackageMaker {
@@ -10,7 +12,32 @@ class AppPackageMakerApk extends AppPackageMaker {
 
   @override
   Future<MakeResult> make(MakeConfig config) {
-    config.buildOutputFiles.first.copySync(config.outputFile.path);
-    return Future.value(resultResolver.resolve(config));
+    final artifacts = <FileSystemEntity>[];
+
+    for (final file in config.buildOutputFiles) {
+      final nameWithoutExt = p.basenameWithoutExtension(file.path);
+      final parts = nameWithoutExt.split('-');
+      final abi = parts.length >= 3 ? parts[1] : 'unknown';
+      final ext = p.extension(file.path);
+      final destPath = config.outputArtifactPath.replaceFirst(ext, '-$abi$ext');
+
+      final dest = File(destPath);
+
+      if (!dest.parent.existsSync()) {
+        dest.parent.createSync(recursive: true);
+      }
+
+      file.copySync(dest.path);
+      artifacts.add(dest);
+    }
+
+    final resolvedConfig = config.copyWith(config)
+      ..buildOutputFiles = artifacts.whereType<File>().toList();
+    return Future.value(
+      resultResolver.resolve(
+        resolvedConfig,
+        artifacts: artifacts,
+      ),
+    );
   }
 }

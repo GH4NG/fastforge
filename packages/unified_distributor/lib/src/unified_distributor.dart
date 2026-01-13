@@ -205,10 +205,11 @@ class UnifiedDistributor {
           print(
             const JsonEncoder.withIndent('  ').convert(makeResult.toJson()),
           );
-          FileSystemEntity artifact = makeResult.artifacts.first;
-          logger.info(
-            'Successfully packaged ${artifact.path}'.brightGreen(),
-          );
+          for (FileSystemEntity artifact in makeResult.artifacts) {
+            logger.info(
+              'Successfully packaged ${artifact.path}'.brightGreen(),
+            );
+          }
           makeResultList.add(makeResult);
         }
       }
