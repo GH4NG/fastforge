@@ -40,7 +40,13 @@ class AppPackageMakerAppImage extends AppPackageMaker {
             ///  libkeybinder-3.0.so.0 => /lib64/libkeybinder-3.0.so.0 (0x00007f6513811000)
             /// to this:
             ///  /lib64/libkeybinder-3.0.so.0
-            .map((line) => line.split(' => ')[1].trim().split(' ').first.trim())
+            .map((line) => line.split(' => ')[1].trim())
+            .where(
+              (part) =>
+                  !part.contains('not found') &&
+                  part.split(' ').first.trim().isNotEmpty,
+            )
+            .map((part) => part.split(' ').first.trim())
             .toList()
           ..sort();
 
